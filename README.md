@@ -5,7 +5,7 @@ Duas implementações para preencher as dez rodadas do [RPA Challenge](https://r
 ## Estrutura
 
 - `power-automate/fluxo.txt`: ações copiáveis para o Power Automate Desktop, incluindo os seletores dos elementos web.
-- `python/challenge.py`: implementação em Python com Selenium e leitura de Excel via openpyxl.
+- `python/challenge.py`: implementação em Python com Selenium e leitura de Excel via Pandas (usando openpyxl como mecanismo de leitura).
 - `tests/`: testes locais da leitura e do registro de resultados do Python com navegador simulado.
 
 As duas versões leem os primeiros dez registros da planilha, encontram os campos por atributos estáveis e produzem um log de etapas, um resultado por registro com data/hora e uma captura da tela final com a pontuação. Uma falha durante o preenchimento interrompe as rodadas para não associar a linha seguinte à rodada errada.

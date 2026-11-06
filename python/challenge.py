@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from openpyxl import load_workbook
+import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -35,29 +35,18 @@ return previous;
 
 
 def read_records(path: Path) -> list[list[str]]:
-    workbook = load_workbook(path, read_only=True, data_only=True)
-    try:
-        sheet = workbook.active
-        rows = sheet.iter_rows(values_only=True)
-        headers = [str(value).strip() if value is not None else "" for value in next(rows)]
-        if any(headers.count(name) != 1 for name in HEADERS):
-            raise ValueError("A planilha deve conter uma coluna para cada cabeçalho esperado.")
-        positions = [headers.index(name) for name in HEADERS]
-        records = []
-        for row in rows:
-            if not any(value is not None for value in row):
-                continue
-            values = [row[i] if i < len(row) else None for i in positions]
-            if any(value is None or str(value).strip() == "" for value in values):
-                raise ValueError(f"Registro {len(records) + 1} contém campo vazio.")
-            records.append([str(value).strip() for value in values])
-            if len(records) == 10:
-                break
-        if len(records) != 10:
-            raise ValueError(f"São necessários 10 registros; encontrados {len(records)}.")
-        return records
-    finally:
-        workbook.close()
+    frame = pd.read_excel(path, dtype=str, keep_default_na=False, engine="openpyxl")
+    frame.columns = [str(column).strip() for column in frame.columns]
+    if any(list(frame.columns).count(name) != 1 for name in HEADERS):
+        raise ValueError("A planilha deve conter uma coluna para cada cabeçalho esperado.")
+    frame = frame.loc[:, list(HEADERS)].map(lambda value: str(value).strip())
+    # Preserve Excel row positions so logs identify the actual source row.
+    frame = frame.head(10)
+    if len(frame) != 10:
+        raise ValueError(f"São necessários 10 registros; encontrados {len(frame)}.")
+    if frame.eq("").any(axis=None):
+        raise ValueError("Os dez primeiros registros devem ter todos os campos preenchidos.")
+    return frame.values.tolist()
 
 
 def run(path: Path, output: Path, timeout: float) -> int:
