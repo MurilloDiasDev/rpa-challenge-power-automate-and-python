@@ -22,7 +22,8 @@ As duas versões leem os primeiros dez registros da planilha, encontram os campo
 1. Instale o Power Automate Desktop, o Excel para Windows e a extensão oficial do Power Automate para Chrome (ou configure o WebDriver suportado pelo Power Automate).
 2. Crie um fluxo de desktop vazio. Abra `power-automate/fluxo.txt`, copie todo o conteúdo e cole no painel central do editor. Os elementos web são incluídos no texto.
 3. Na ação **Iniciar o Excel**, ajuste o caminho da planilha. O exemplo aponta para `C:\Users\User\Downloads\challenge.xlsx` e precisa refletir o seu computador.
-4. Salve e execute o fluxo. As ações de preenchimento usam inserção direta, sem simular a digitação de cada caractere. Os arquivos são criados em `Documentos\RPA-Challenge`.
+4. Na barra inferior do editor, ajuste **Atraso na execução** para **1 ms** (mínimo aceito). Essa configuração controla a pausa entre ações na execução pelo editor e não faz parte do texto de ações em `fluxo.txt`.
+5. Salve e execute o fluxo. As ações de preenchimento usam inserção direta, sem simular a digitação de cada caractere. Os arquivos são criados em `Documentos\RPA-Challenge`.
 
 O arquivo é uma representação de ações para colar no editor; não é um pacote de solução `.zip`. O fluxo foi executado no Power Automate Desktop em 06/11/2026 e concluiu as dez rodadas com 100% de acerto (70/70 campos). Consulte os [prints e logs reais](evidencias/README.md).
 
@@ -51,7 +52,7 @@ Os testes usam um navegador simulado; não enviam o formulário nem verificam a 
 
 | Implementação | Acerto | Tempo informado pelo site |
 | --- | --- | --- |
-| Power Automate Desktop | 100% (70/70 campos) | 109.629 ms (109,629 s) |
+| Power Automate Desktop — atraso de 1 ms | 100% (70/70 campos) | 96.738 ms (96,738 s) |
 | Python + Selenium + Pandas | 100% (70/70 campos) | 622 ms (0,622 s) |
 
-Os tempos correspondem às dez rodadas cronometradas pelo site, sem incluir leitura do Excel e abertura do navegador. São resultados de uma execução de cada implementação. [Capturas originais e logs por linha](evidencias/README.md).
+Os tempos correspondem às dez rodadas cronometradas pelo site, sem incluir leitura do Excel e abertura do navegador. Com o atraso do editor reduzido de 40 para 1 ms, o Power Automate passou de 109.629 para 96.738 ms: redução observada de 12.891 ms (11,76%), mantendo 100% de acerto. São execuções individuais; a diferença inclui variações normais do ambiente. O código das ações foi preservado. Essa configuração não elimina o custo das interações web. [Capturas originais e logs por linha](evidencias/README.md).

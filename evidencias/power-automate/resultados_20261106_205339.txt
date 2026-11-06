@@ -1,0 +1,10 @@
+﻿06/11/2026 20:54:01 | linha 2 | OK | Acao de envio concluida
+06/11/2026 20:54:11 | linha 3 | OK | Acao de envio concluida
+06/11/2026 20:54:21 | linha 4 | OK | Acao de envio concluida
+06/11/2026 20:54:30 | linha 5 | OK | Acao de envio concluida
+06/11/2026 20:54:40 | linha 6 | OK | Acao de envio concluida
+06/11/2026 20:54:50 | linha 7 | OK | Acao de envio concluida
+06/11/2026 20:54:59 | linha 8 | OK | Acao de envio concluida
+06/11/2026 20:55:09 | linha 9 | OK | Acao de envio concluida
+06/11/2026 20:55:19 | linha 10 | OK | Acao de envio concluida
+06/11/2026 20:55:29 | linha 11 | OK | Acao de envio concluida
