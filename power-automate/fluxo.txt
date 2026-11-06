@@ -1,0 +1,79 @@
+Folder.GetSpecialFolder SpecialFolder: Folder.SpecialFolder.Personal SpecialFolderPath=> Documentos
+IF (Folder.IfFolderExists.DoesNotExist Path: $'''%Documentos%\RPA-Challenge''') THEN
+    Folder.Create FolderPath: Documentos FolderName: $'''RPA-Challenge''' Folder=> PastaSaida
+END
+SET PastaSaida TO $'''%Documentos%\RPA-Challenge'''
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> Inicio
+Text.ConvertDateTimeToText.FromCustomDateTime DateTime: Inicio CustomFormat: $'''yyyyMMdd_HHmmss''' Result=> IdExecucao
+SET LogEtapas TO $'''%PastaSaida%\etapas_%IdExecucao%.log'''
+SET LogResultados TO $'''%PastaSaida%\resultados_%IdExecucao%.txt'''
+SET Captura TO $'''%PastaSaida%\resultado_final_%IdExecucao%.png'''
+File.WriteText File: LogEtapas TextToWrite: $'''%Inicio% | Iniciando leitura do Excel''' AppendNewLine: True IfFileExists: File.IfFileExists.Overwrite Encoding: File.FileEncoding.UTF8
+Excel.LaunchExcel.LaunchAndOpenUnderExistingProcess Path: $'''C:\Users\User\Downloads\challenge.xlsx''' Visible: True ReadOnly: True UseMachineLocale: False Instance=> ExcelInstance
+Excel.ReadFromExcel.ReadCells Instance: ExcelInstance StartColumn: $'''A''' StartRow: 1 EndColumn: $'''G''' EndRow: 11 GetCellContentsMode: Excel.GetCellContentsMode.TypedValues FirstLineIsHeader: True RangeValue=> ExcelData
+Excel.CloseExcel.Close Instance: ExcelInstance
+DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> Agora
+File.WriteText File: LogEtapas TextToWrite: $'''%Agora% | Excel lido; iniciando Chrome''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+WebAutomation.LaunchChrome.LaunchChrome Url: $'''https://rpachallenge.com/''' WindowState: WebAutomation.BrowserWindowState.Maximized ClearCache: False ClearCookies: False WaitForPageToLoadTimeout: 60 Timeout: 60 BrowserInstance=> Browser
+WebAutomation.PressButton.PressButton BrowserInstance: Browser Control: appmask['RPA Challenge']['Iniciar'] WaitForPageToLoadTimeout: 60
+SET LinhaExcel TO 2
+SET Concluido TO True
+LOOP FOREACH CurrentItem IN ExcelData
+    SET Falhou TO False
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> Agora
+    File.WriteText File: LogEtapas TextToWrite: $'''%Agora% | Preenchendo linha %LinhaExcel%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    BLOCK
+        ON BLOCK ERROR all
+            SET Falhou TO True
+        END
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['PrimeiroNome'] Text: CurrentItem[0] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Sobrenome'] Text: CurrentItem[1] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Empresa'] Text: CurrentItem[2] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Cargo'] Text: CurrentItem[3] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Endereco'] Text: CurrentItem[4] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Email'] Text: CurrentItem[5] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PopulateTextField.PopulateTextField BrowserInstance: Browser Control: appmask['RPA Challenge']['Telefone'] Text: CurrentItem[6] EmulateTyping: False UnfocusAfterPopulate: True Mode: WebAutomation.PopulateTextMode.Replace
+        WebAutomation.PressButton.PressButton BrowserInstance: Browser Control: appmask['RPA Challenge']['Enviar'] WaitForPageToLoadTimeout: 60
+    END
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> Agora
+    IF Falhou = True THEN
+        ERROR => UltimoErro Reset: True
+        File.WriteText File: LogResultados TextToWrite: $'''%Agora% | linha %LinhaExcel% | NOK | %UltimoErro.Message%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+        File.WriteText File: LogEtapas TextToWrite: $'''%Agora% | Falha na linha %LinhaExcel%; fluxo interrompido''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+        SET Concluido TO False
+        EXIT LOOP
+    ELSE
+        File.WriteText File: LogResultados TextToWrite: $'''%Agora% | linha %LinhaExcel% | OK | Acao de envio concluida''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+    END
+    Variables.IncreaseVariable Value: LinhaExcel IncrementValue: 1
+END
+IF Concluido = True THEN
+    WAIT (WebAutomation.WaitForWebPageContent.WebPageToContainElement BrowserInstance: Browser Control: appmask['RPA Challenge']['ResultadoFinal']) FOR 15
+    WebAutomation.TakeScreenshot.TakeScreenshotSaveToFile BrowserInstance: Browser File: Captura FileFormat: WebAutomation.FileFormat.Png
+    DateTime.GetCurrentDateTime.Local DateTimeFormat: DateTime.DateTimeFormat.DateAndTime CurrentDateTime=> Agora
+    File.WriteText File: LogEtapas TextToWrite: $'''%Agora% | Captura da pontuacao salva em %Captura%''' AppendNewLine: True IfFileExists: File.IfFileExists.Append Encoding: File.FileEncoding.UTF8
+END
+
+# [ControlRepository][PowerAutomateDesktop]
+
+{
+  "ControlRepositorySymbols": [
+    {
+      "IgnoreImagesOnSerialization": false,
+      "Repository": "{\n  \"Screens\": [\n    {\n      \"Controls\": [\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"button\",\n          \"InstanceId\": \"bf748b60-fd3c-4444-815a-290d66877bfb\",\n          \"Name\": \"Iniciar\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"button.btn-large\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"button\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"498ba7a0-6c24-40cb-a114-5c7de8e5a176\",\n          \"Name\": \"Enviar\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[type=\\\"submit\\\"][value=\\\"Submit\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"c0e8c42a-4eba-46bc-a1de-2f3e9b8b732f\",\n          \"Name\": \"PrimeiroNome\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelFirstName\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"d46407e1-3e53-486d-9fdc-7994126e0de3\",\n          \"Name\": \"Sobrenome\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelLastName\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"0a14d785-1973-4f2f-8986-7d1f43a8565b\",\n          \"Name\": \"Empresa\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelCompanyName\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"c5d01aee-1d9a-4336-8b53-c6a6d2a1fc7a\",\n          \"Name\": \"Cargo\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelRole\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"0a4a6f2e-0465-40dc-b68e-5d24d16b3781\",\n          \"Name\": \"Endereco\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelAddress\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"122753f2-84a1-4117-9a90-1df3bfeec465\",\n          \"Name\": \"Email\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelEmail\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"input\",\n          \"InstanceId\": \"3547c03e-b822-4dbe-b0f0-f1f09019859f\",\n          \"Name\": \"Telefone\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \"input[ng-reflect-name=\\\"labelPhone\\\"]\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"input\"\n        },\n        {\n          \"AutomationProtocol\": null,\n          \"ScreenShot\": null,\n          \"ElementTypeName\": \"div\",\n          \"InstanceId\": \"016048c1-03dc-4f12-8247-10c93b7f38d4\",\n          \"Name\": \"ResultadoFinal\",\n          \"SelectorCount\": 1,\n          \"Selectors\": [\n            {\n              \"CustomSelector\": \".congratulations .message2\",\n              \"Elements\": [],\n              \"Ignore\": false,\n              \"IsCustom\": true,\n              \"IsWindowsInstance\": false,\n              \"Order\": 0\n            }\n          ],\n          \"Tag\": \"div\"\n        }\n      ],\n      \"Handle\": {\n        \"value\": 0\n      },\n      \"ProcessName\": null,\n      \"ScreenShot\": null,\n      \"ElementTypeName\": \"Web Page\",\n      \"InstanceId\": \"3a7e30ba-ad30-4363-a8f2-3d5d608e8bae\",\n      \"Name\": \"RPA Challenge\",\n      \"SelectorCount\": 1,\n      \"Selectors\": [\n        {\n          \"CustomSelector\": null,\n          \"Elements\": [\n            {\n              \"Attributes\": [],\n              \"CustomValue\": \"domcontainer\",\n              \"Ignore\": false,\n              \"Name\": \"RPA Challenge\",\n              \"Tag\": \"domcontainer\"\n            }\n          ],\n          \"Ignore\": false,\n          \"ImageSelector\": null,\n          \"IsCustom\": false,\n          \"IsImageBased\": false,\n          \"IsPlaceholderSelector\": false,\n          \"IsWindowsInstance\": false,\n          \"Name\": \"Default Selector\",\n          \"Properties\": []\n        }\n      ],\n      \"Tag\": \"domcontainer\",\n      \"ScreenshotPath\": null\n    }\n  ],\n  \"Version\": 1\n}",
+      "ImportMetadata": {
+        "DisplayName": "Local computer",
+        "ConnectionString": "",
+        "Type": "Local",
+        "DesktopType": "local"
+      },
+      "Name": "appmask"
+    }
+  ],
+  "ImageRepositorySymbol": {
+    "Repository": "{\n  \"Folders\": [],\n  \"Images\": [],\n  \"Version\": 1\n}",
+    "ImportMetadata": {},
+    "Name": "imgrepo"
+  },
+  "ConnectionReferences": []
+}
